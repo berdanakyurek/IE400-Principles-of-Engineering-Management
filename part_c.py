@@ -1,36 +1,28 @@
 # Group 37
 import gurobipy
 from gurobipy import GRB
-from math import sqrt
-
-# m = gurobipy.Model("model_a")
-# x = m.addVar(vtype=GRB.CONTINUOUS, name="x")
-# m.setObjective(x , GRB.MAXIMIZE)
-# m.optimize()
-
-# exit()
 
 x_base = [20, 0, 30, 15, 0, 0, 35]
-
 unit_costs = [1, 2, 1, 3, 2, 1, 1]
 fixed_costs = [25, 50, 10, 25, 20, 30, 40]
+min_doses = [20,10,20,10,10,20,20]
+max_doses = [80,50,100,100,70,90,50]
 # Patient specifications
-q_score_treshold = 25
+q_score_threshold = 25
 total_dosage = 100
 p = [1, 1, 0, 0, 1, 1, 0, 0, 0]
 
 base_q_value = -5*p[0]-0.5*p[1]-12*p[2]-8*p[3]-5*p[4]-5*p[5]-p[6]-3*p[7]-2*p[8]
 print(base_q_value)
 
-
 while True:
     m = gurobipy.Model("model_a")
 
     y = []
-    x = []
     for i in range(7):
         y.append(m.addVar(vtype=GRB.BINARY, name="y" + str(i+1)))
 
+    x = []
     for i in range(7):
         x.append(m.addVar(vtype=GRB.CONTINUOUS, name="x" + str(i+1)))
 
@@ -40,6 +32,7 @@ while True:
         for j in range(2):
             arr.append(m.addVar(vtype=GRB.CONTINUOUS, name="x%dab%d"%(i, j)))
         xab.append(arr)
+
     fixed_cost_flags = []
     for i in range(7):
         fixed_cost_flags.append(m.addVar(vtype=GRB.BINARY, name="fcf" + str(i+1)))
@@ -51,73 +44,63 @@ while True:
 
     m.setObjective(obj_func, GRB.MINIMIZE)
 
-    s = []
-    ss = []
+    # cost constraints
     for i in range(7):
-        s.append(m.addVar(vtype=GRB.CONTINUOUS))
-        ss.append(m.addVar(vtype=GRB.BINARY))
-        m.addConstr(xab[i][0] + xab[i][1] - s[i] == ss[i])
-        m.addConstr((ss[i] == 0) >> (fixed_cost_flags[i] == 1))
-        m.addConstr(s[i] >= 0)
-        m.addConstr(ss[i] >= 0)
-
+        m.addConstr((fixed_cost_flags[i] == 0) >> (x[i] == x_base[i]))
 
     # abs constraints
     for i in range(7):
-        m.addConstr(x[i] >= 0, "c%d"%i)
-        m.addConstr(xab[i][0] >= 0, "cabs%d-0"%i)
-        m.addConstr(xab[i][1] >= 0, "cabs%d-1"%i)
-
-    for i in range(7):
         m.addConstr(x[i] - x_base[i] == xab[i][0] + xab[i][1], "cabs%d-2"%i)
 
-    # Treshold contraint
+    # greater or equal to zero constraints
+    for i in range(7):
+        m.addConstr(x[i] >= 0, "c%d" % i)
+        m.addConstr(xab[i][0] >= 0, "cabs%d-0" % i)
+        m.addConstr(xab[i][1] >= 0, "cabs%d-1" % i)
+
+    # threshold constraint
     q_score = base_q_value-5*y[0]-6*y[1]-4*y[2]-4*y[3]-8*y[4]-6*y[5]-7*y[6] + 0.28*x[0] + 0.30 * x[1] + 0.25 * x[2] + 0.17 * x[3] + 0.31 * x[4] + 0.246 * x[5] + 0.4 * x[6]
-    m.addConstr( q_score >= q_score_treshold , "q_tres_c")
+    m.addConstr(q_score >= q_score_threshold, "q_tres_c")
 
     # Dosage constraint
-    m.addConstr(sum(x) <= total_dosage, "dosage_c")
-
-    # Y constraints
-
-    # for i in range(7):
-    #     m.addConstr(y[i] == y_expected[i])
+    m.addConstr(sum(x) == total_dosage, "dosage_c")
 
     for i in range(7):
         m.addConstr((y[i] == 0) >> (x[i] == 0))
+        m.addConstr((y[i] == 1) >> (x[i] >= min_doses[i]))
+        m.addConstr((y[i] == 1) >> (x[i] <= max_doses[i]))
 
-    # Special constraints case 1
-    sss = []
-    for i in range(2):
-        sss.append(m.addVar(vtype=GRB.CONTINUOUS))
-        m.addConstr(sss[i] >= 0)
+    # Special constraint 1 -- Mel and Oxa
+    melAndOxa = m.addVar(vtype=GRB.BINARY, name="melAndOxa")
+    m.addConstr(melAndOxa == (y[0] and y[1]))
 
-    m.addConstr(x[0] + x[1] + sss[0] == 70)
-    m.addConstr(x[0] + x[1] - sss[1] == 50)
+    m.addConstr((melAndOxa == 1) >> (x[0] + x[1] <= 70))
+    m.addConstr((melAndOxa == 1) >> (x[0] + x[1] >= 50))
 
-    # Special constraints case 2
-    case2s = m.addVar(vtype=GRB.CONTINUOUS)
-    m.addConstr(case2s >= 0)
+    # Special constraint 2 -- Epi and Deci
+    m.addConstr((y[4] == 0) >> (x[2] <= 25))
 
-    m.addConstr((y[4] == 0)>>(x[2] + case2s == 25))
-    # Special constraints case 3
+    # Special constraint 3 -- Pen and Lom
+    penAndLom = m.addVar(vtype=GRB.BINARY, name="penAndLom")
+    m.addConstr(penAndLom == (y[3] and y[5]))
 
-    case3s = []
-    case3s.append(m.addVar(vtype=GRB.BINARY))
-    case3s.append(m.addVar(vtype=GRB.INTEGER))
+    thiOrEpi = m.addVar(vtype=GRB.BINARY)
+    m.addConstr(penAndLom == (y[6] or y[4]))
 
-    m.addConstr(case3s[0] == (y[3] and y[5]))
-    m.addConstr(case3s[1] == y[6] + y[4])
-    m.addConstr((case3s[0] == 1) >> (case3s[1] >= 1))
+    m.addConstr((penAndLom == 1) >> (thiOrEpi == 1))
+
+    #test
+    q_test = m.addVar(vtype=GRB.CONTINUOUS, name="q_test")
+    m.addConstr(q_test == q_score)
+
     m.optimize()
     try:
         for i in range(len(x)):
-            print("x[%d]="%i, x[i].X)
-        for i in range(len(y)):
-            print("y[%d]="%i, y[i].X)
-        for i in range(len(y)):
-            print("xab[%d]="%i, xab[i][0].X + xab[i][1].X, x[i].X - x_base[i])
-        print(total_dosage)
+            print("y[%d]=" % i, y[i].X, "x[%d]=" % i, x[i].X)
+        for i in range(len(x)):
+            print("fixedCost[%d]=" % i, fixed_cost_flags[i].X)
+        print("Total dosage: ", total_dosage)
+        print("Q: ", q_test.X)
         break
     except:
         total_dosage += 1

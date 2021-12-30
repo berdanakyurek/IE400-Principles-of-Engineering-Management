@@ -9,7 +9,7 @@ fixed_costs = [25, 50, 10, 25, 20, 30, 40]
 min_doses = [20,10,20,10,10,20,20]
 max_doses = [80,50,100,100,70,90,50]
 # Patient specifications
-q_score_treshold = 25
+q_score_threshold = 25
 total_dosage = 100
 p = [1, 1, 0, 0, 1, 1, 0, 0, 0]
 
@@ -62,7 +62,7 @@ while True:
 
     # Threshold constraint
     q_score = base_q_value-5*y[0]-6*y[1]-4*y[2]-4*y[3]-8*y[4]-6*y[5]-7*y[6] + 0.28*x[0] + 0.30 * x[1] + 0.25 * x[2] + 0.17 * x[3] + 0.31 * x[4] + 0.246 * x[5] + 0.4 * x[6]
-    m.addConstr( q_score >= q_score_treshold , "q_tres_c")
+    m.addConstr(q_score >= q_score_threshold, "q_tres_c")
 
     # Dosage constraint
     m.addConstr(sum(x) == total_dosage, "dosage_c")
