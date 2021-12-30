@@ -85,7 +85,7 @@ while True:
     m.addConstr(penAndLom == (y[3] and y[5]))
 
     thiOrEpi = m.addVar(vtype=GRB.BINARY)
-    m.addConstr(penAndLom == (y[6] or y[4]))
+    m.addConstr(thiOrEpi == (y[6] or y[4]))
 
     m.addConstr((penAndLom == 1) >> (thiOrEpi == 1))
 
