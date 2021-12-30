@@ -34,6 +34,7 @@ while True:
         for j in range(2):
             arr.append(m.addVar(vtype=GRB.CONTINUOUS, name="x%dab%d"%(i, j)))
         xab.append(arr)
+
     fixed_cost_flags = []
     for i in range(7):
         fixed_cost_flags.append(m.addVar(vtype=GRB.BINARY, name="fcf" + str(i+1)))
@@ -45,47 +46,40 @@ while True:
 
     m.setObjective(obj_func, GRB.MINIMIZE)
 
-    s = []
-    ss = []
+    # cost constraints
     for i in range(7):
-        s.append(m.addVar(vtype=GRB.CONTINUOUS))
-        ss.append(m.addVar(vtype=GRB.BINARY))
-        m.addConstr(xab[i][0] + xab[i][1] - s[i] == ss[i])
-        m.addConstr((ss[i] == 0) >> (fixed_cost_flags[i] == 1))
-
+        m.addConstr((fixed_cost_flags[i] == 0) >> (x[i] == x_base[i]))
 
     # abs constraints
+    for i in range(7):
+        m.addConstr(x[i] - x_base[i] == xab[i][0] + xab[i][1], "cabs%d-2"%i)
+
+    # greater or equal to zero constraints
     for i in range(7):
         m.addConstr(x[i] >= 0, "c%d"%i)
         m.addConstr(xab[i][0] >= 0, "cabs%d-0"%i)
         m.addConstr(xab[i][1] >= 0, "cabs%d-1"%i)
 
-    for i in range(7):
-        m.addConstr(x[i] - xb[i] == xab[i][0] + xab[i][1], "cabs%d-2"%i)
-
-    # Treshold contraint
+    # Threshold constraint
     q_score = base_q_value-5*y[0]-6*y[1]-4*y[2]-4*y[3]-8*y[4]-6*y[5]-7*y[6] + 0.28*x[0] + 0.30 * x[1] + 0.25 * x[2] + 0.17 * x[3] + 0.31 * x[4] + 0.246 * x[5] + 0.4 * x[6]
     m.addConstr( q_score >= q_score_treshold , "q_tres_c")
 
     # Dosage constraint
-    m.addConstr(sum(x) <= total_dosage, "dosage_c")
-
-    # Y constraints
-
-    #for i in range(7):
-    #    m.addConstr(y[i] == y_expected[i])
+    m.addConstr(sum(x) == total_dosage, "dosage_c")
 
     for i in range(7):
         m.addConstr((y[i] == 0) >> (x[i] == 0))
+        m.addConstr((y[i] == 1) >> (x[i] >= min_doses[i]))
+        m.addConstr((y[i] == 1) >> (x[i] <= max_doses[i]))
 
     m.optimize()
 
     try:
         for i in range(len(x)):
-            print("x[%d]="%i, x[i].X)
-        for i in range(len(y)):
-            print("y[%d]="%i, y[i].X)
-        print(total_dosage)
+            print("y[%d]="%i, y[i].X, "x[%d]="%i, x[i].X)
+        for i in range(len(x)):
+            print("fixedCost[%d]="%i, fixed_cost_flags[i].X)
+        print("Total dosage: " , total_dosage)
         break
     except:
         total_dosage += 1

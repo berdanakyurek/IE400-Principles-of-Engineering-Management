@@ -37,9 +37,6 @@ while True:
 
     for i in range(7):
         m.addConstr((y[i] == 0) >> (x[i] == 0))
-
-    #dosage constraints
-    for i in range(7):
         m.addConstr((y[i] == 1) >> (x[i] >= min_doses[i]))
         m.addConstr((y[i] == 1) >> (x[i] <= max_doses[i]))
 
