@@ -11,11 +11,14 @@ from math import sqrt
 # exit()
 
 xb = [20, 0, 30, 15, 0, 0, 35]
-y_expected = [1,0,1,1,0,0,1]
+y_expected = [1, 0, 1, 1, 0, 0, 1]
+
+unit_costs = [1, 2, 1, 3, 2, 1, 1]
+fixed_costs = [25, 50, 10, 25, 20, 30, 40]
 # Patient specifications
 q_score_treshold = 25
 total_dosage = 100
-p = [1,1,0,0,1,1,0,0,0]
+p = [1, 1, 0, 0, 1, 1, 0, 0, 0]
 
 base_q_value = -5*p[0]-0.5*p[1]-12*p[2]-8*p[3]-5*p[4]-5*p[5]-p[6]-3*p[7]-2*p[8]
 print(base_q_value)
@@ -23,7 +26,6 @@ print(base_q_value)
 
 while True:
     m = gurobipy.Model("model_a")
-
 
     y = []
     for i in range(7):
@@ -39,9 +41,25 @@ while True:
         for j in range(2):
             arr.append(m.addVar(vtype=GRB.CONTINUOUS, name="x%dab%d"%(i, j)))
         xab.append(arr)
+    fixed_cost_flags = []
+    for i in range(7):
+        fixed_cost_flags.append(m.addVar(vtype=GRB.BINARY, name="fcf" + str(i+1)))
 
-    obj_func = xab[0][0] + xab[0][1] + x[1] + xab[2][0] + xab[2][1] + xab[3][0] + xab[3][1] + x[4] + x[5] + xab[6][0] + xab[6][1]
+    obj_func = unit_costs[0] * (xab[0][0] + xab[0][1]) + unit_costs[1] * x[1] + unit_costs[2] * (xab[2][0] + xab[2][1]) + unit_costs[3] * (xab[3][0] + xab[3][1]) + unit_costs[4] * x[4] + unit_costs[5] * x[5] + unit_costs[6] * (xab[6][0] + xab[6][1])
+
+    for i in range(7):
+        obj_func += fixed_costs[i] * fixed_cost_flags[i]
+
     m.setObjective(obj_func, GRB.MINIMIZE)
+
+    s = []
+    ss = []
+    for i in range(7):
+        s.append(m.addVar(vtype=GRB.CONTINUOUS))
+        ss.append(m.addVar(vtype=GRB.BINARY))
+        m.addConstr(xab[i][0] + xab[i][1] - s[i] == ss[i])
+        m.addConstr((ss[i] == 0) >> (fixed_cost_flags[i] == 1))
+
 
     # abs constraints
     for i in range(7):
