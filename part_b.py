@@ -11,7 +11,6 @@ from math import sqrt
 # exit()
 
 xb = [20, 0, 30, 15, 0, 0, 35]
-y_expected = [1, 0, 1, 1, 0, 0, 1]
 
 unit_costs = [1, 2, 1, 3, 2, 1, 1]
 fixed_costs = [25, 50, 10, 25, 20, 30, 40]
@@ -79,8 +78,8 @@ while True:
 
     # Y constraints
 
-    for i in range(7):
-        m.addConstr(y[i] == y_expected[i])
+    #for i in range(7):
+    #    m.addConstr(y[i] == y_expected[i])
 
     for i in range(7):
         m.addConstr((y[i] == 0) >> (x[i] == 0))
