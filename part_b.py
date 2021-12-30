@@ -1,19 +1,13 @@
 # Group 37
 import gurobipy
 from gurobipy import GRB
-from math import sqrt
 
-# m = gurobipy.Model("model_a")
-# x = m.addVar(vtype=GRB.CONTINUOUS, name="x")
-# m.setObjective(x , GRB.MAXIMIZE)
-# m.optimize()
-
-# exit()
-
-xb = [20, 0, 30, 15, 0, 0, 35]
+x_base = [20, 0, 30, 15, 0, 0, 35]
 
 unit_costs = [1, 2, 1, 3, 2, 1, 1]
 fixed_costs = [25, 50, 10, 25, 20, 30, 40]
+min_doses = [20,10,20,10,10,20,20]
+max_doses = [80,50,100,100,70,90,50]
 # Patient specifications
 q_score_treshold = 25
 total_dosage = 100
